@@ -1,0 +1,371 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { landingOpportunityService } from '@/src/services/landing-opportunity.service';
+import { Opportunity } from '@/src/data/mock-landing-opportunities';
+
+export default function LandingPage() {
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch opportunities from the mock service layer
+  useEffect(() => {
+    const fetchOpportunities = async () => {
+      try {
+        const data = await landingOpportunityService.getOpportunities();
+        setOpportunities(data);
+      } catch (error) {
+        console.error("Failed to fetch opportunities from service:", error);
+        setOpportunities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOpportunities();
+  }, []);
+
+  // Scroll reveal trigger state
+  const [programsVisible, setProgramsVisible] = useState(true);
+  const programsRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Force play of background video to resolve React/browser autoplay constraints
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = true;
+    
+    const handlePlay = () => {
+      video.play().catch((err) => {
+        console.warn("Autoplay was prevented by browser:", err);
+      });
+    };
+
+    if (video.readyState >= 3) {
+      handlePlay();
+    } else {
+      video.addEventListener('canplay', handlePlay);
+    }
+    return () => {
+      video.removeEventListener('canplay', handlePlay);
+    };
+  }, []);
+
+  // Auto-scroll to #programs if hash is present in URL on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#programs') {
+      const timeoutId = setTimeout(() => {
+        const target = document.getElementById('programs');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+          setProgramsVisible(true);
+        }
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Robust fallback timer to guarantee program card visibility after 1.5 seconds
+    const timer = setTimeout(() => {
+      setProgramsVisible(true);
+    }, 1500);
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setProgramsVisible(true);
+          clearTimeout(timer);
+          if (programsRef.current) observer.unobserve(programsRef.current);
+        }
+      },
+      { rootMargin: '0px 0px -80px 0px', threshold: 0.05 }
+    );
+
+    if (programsRef.current) {
+      observer.observe(programsRef.current);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, []);
+
+  const handleExploreClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const target = document.getElementById('programs');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans flex flex-col justify-between text-slate-800">
+      <div>
+        {/* Navigation Header */}
+        <header className="h-20 w-full bg-white flex items-center justify-between px-6 lg:px-16 border-b border-slate-100 sticky top-0 z-40 animate-slide-in">
+          <div className="flex items-center gap-12">
+            <Link href="/" className="flex items-center">
+              <img src="/logo.png" alt="Pinesphere Logo" className="h-12 w-auto object-contain transition-transform hover:scale-[1.02]" />
+            </Link>
+ 
+            {/* Desktop Navbar Menu (Programs) */}
+            <nav className="hidden sm:flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900">
+              <a href="#programs" onClick={handleExploreClick} className="hover:text-blue-650 transition-colors">Programs</a>
+            </nav>
+          </div>
+ 
+          <div className="flex items-center gap-6">
+            {/* Search Action */}
+            {/* <button className="text-slate-900 hover:text-blue-650 transition-colors cursor-pointer" aria-label="Search">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button> */}
+ 
+            {/* Original Login Button */}
+            <Link href="/login" className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-900 hover:text-blue-650 transition-colors">
+              Login
+            </Link>
+          </div>
+        </header>
+ 
+        {/* Hero Section with Diagonal Clip Design and Background Video */}
+        <div className="relative w-full h-[calc(100vh-5rem)] bg-[#050505] overflow-hidden flex flex-col justify-between">
+          
+          {/* Background Video playing behind the black section */}
+          <div className="absolute inset-0 w-full h-full z-0">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              src="https://pinesphere.com/static/assets/videos/pines_banner2.mp4"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-slate-950/30" />
+          </div>
+ 
+          {/* Upper-Left White Background Slant Overlay (Hides video on top left) */}
+          <div 
+            className="absolute inset-0 bg-white z-1 hero-slant"
+          />
+ 
+          {/* Vertical lines overlay on the black section (decorations) */}
+          <div className="absolute inset-0 z-5 pointer-events-none">
+            <div className="absolute top-[32%] bottom-0 w-[1px] bg-gradient-to-b from-white/20 via-white/5 to-transparent" style={{ left: '20%' }} />
+            <div className="absolute top-[45%] bottom-0 w-[1px] bg-gradient-to-b from-white/20 via-white/5 to-transparent" style={{ left: '41%' }} />
+            <div className="absolute top-[28%] bottom-0 w-[1px] bg-gradient-to-b from-white/20 via-white/5 to-transparent" style={{ left: '58%' }} />
+            <div className="absolute top-[38%] bottom-0 w-[1px] bg-gradient-to-b from-white/20 via-white/5 to-transparent" style={{ left: '77%' }} />
+            <div className="absolute top-[30%] bottom-0 w-[1px] bg-gradient-to-b from-white/20 via-white/5 to-transparent" style={{ left: '88%' }} />
+          </div>
+ 
+          {/* Content Wrapper */}
+          <div className="relative z-10 w-full h-full max-w-7xl mx-auto pl-4 sm:pl-8 lg:pl-10 pr-6 lg:pr-16 pt-4 pb-12 md:pt-6 md:pb-16 flex flex-col justify-between">
+            
+            {/* Top Text Content (Original text, lies on the white background overlay) */}
+            <div className="text-left mt-2 md:mt-3 max-w-3xl z-10">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-normal tracking-tight text-slate-950 leading-[1.15] mb-6 animate-slide-in">
+                Start Your <br />
+                Internship Journey <br />
+                With Enterprise Leaders
+              </h1>
+              <p className="text-sm sm:text-base leading-relaxed text-slate-600 max-w-xl animate-slide-in font-medium" style={{ animationDelay: '70ms' }}>
+                Pinesphere ERP offers a diverse range of internship programs designed to bridge the gap between academic learning and industrial excellence. Join our global talent ecosystem today.
+              </p>
+            </div>
+ 
+            {/* Bottom Slider & Commitment Section (Lies on the black background overlay) */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-8 pb-4 z-10">
+              
+              {/* Left Side: 4 Horizontal Slider Indicators */}
+              <div className="flex gap-4 w-60 md:w-80">
+                <div className="h-[2px] bg-white flex-1 transition-all" />
+                <div className="h-[2px] bg-white/20 flex-1 transition-all" />
+                <div className="h-[2px] bg-white/20 flex-1 transition-all" />
+                <div className="h-[2px] bg-white/20 flex-1 transition-all" />
+              </div>
+ 
+              {/* Right Side: The Pinesphere Commitment & Explore Action */}
+              <div className="text-left sm:text-right flex flex-col items-start sm:items-end gap-5">
+                <h2 className="text-xl md:text-2xl font-light tracking-wide text-white leading-snug">
+                  The Pinesphere <br className="hidden sm:inline" />
+                  Commitment
+                </h2>
+                <a 
+                  href="#programs" 
+                  onClick={handleExploreClick}
+                  className="inline-flex bg-white hover:bg-slate-100 text-black text-xs font-bold uppercase tracking-[0.25em] py-3.5 px-8 transition-all active:scale-[0.98] rounded-none animate-slide-in"
+                  style={{ animationDelay: '150ms' }}
+                >
+                  Dive Deeper
+                </a>
+              </div>
+ 
+            </div>
+ 
+          </div>
+ 
+        </div>
+
+        {/* Programs Section */}
+        <div ref={programsRef} id="programs" className="mx-auto max-w-7xl px-6 py-24 lg:px-16 scroll-mt-6">
+          <div className="text-center mb-16">
+            <span className="text-xs font-bold text-blue-600 uppercase tracking-widest block mb-3">Entrance Portal</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Available Opportunities</h2>
+            <p className="mt-2 text-sm text-slate-500">Select a program that matches your career trajectory</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {loading ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-500">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                <p>Loading opportunities...</p>
+              </div>
+            ) : opportunities.map((opp, idx) => (
+              <div 
+                key={idx} 
+                className={`flex flex-col h-full rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] hover:-translate-y-1.5 transition-all duration-300 ${
+                  programsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'
+                }`}
+                style={{ 
+                  transitionDelay: programsVisible ? `${idx * 100}ms` : '0ms',
+                  transitionProperty: 'opacity, transform'
+                }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-transform duration-300">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <span className={`text-xs font-bold px-3 py-1 border tracking-wide uppercase ${opp.color}`}>
+                    {opp.type}
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{opp.title}</h3>
+                <p className="text-sm text-slate-500 flex-1 leading-relaxed mb-6">{opp.description}</p>
+                
+                <div className="space-y-3 border-t border-slate-100 pt-5 mb-6 text-slate-650 text-sm">
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-slate-400 font-medium">Duration:</span>
+                    <span className="font-semibold text-slate-800 ml-auto">{opp.duration}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    <span className="text-slate-400 font-medium">Internship Type:</span>
+                    <span className="font-semibold text-slate-800 ml-auto capitalize">
+                      {opp.internshipType === 'will paid' ? 'Will Be Paid' : opp.internshipType === 'pay' ? 'Paid' : opp.internshipType || 'Free'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    <span className="text-slate-400 font-medium">Mode:</span>
+                    <span className="font-semibold text-slate-800 ml-auto">{opp.mode}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="text-slate-400 font-medium">Seats:</span>
+                    <span className="font-semibold text-slate-800 ml-auto">{opp.seats}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                    </svg>
+                    <span className="text-slate-400 font-medium">Eligibility:</span>
+                    <span className="font-semibold text-slate-800 ml-auto">{opp.eligibility}</span>
+                  </div>
+
+
+
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-slate-400 font-medium">Start Date:</span>
+                    <span className="font-semibold text-slate-800 ml-auto">{opp.startDate}</span>
+                  </div>
+
+                  {opp.internshipType && (
+                    <div className="flex items-center gap-3">
+                      <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-slate-400 font-medium">Compensation:</span>
+                      <span className="font-semibold text-slate-800 ml-auto">
+                        {opp.internshipType === 'free' ? 'Free / Unpaid' : 
+                         opp.internshipType === 'stipend' ? `Stipend (${opp.amount || 'Yes'})` :
+                         opp.internshipType === 'will paid' || opp.internshipType === 'pay' ? `Paid (${opp.amount || 'Yes'})` : 
+                         opp.internshipType}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <Link 
+                  href={`/apply?type=${opp.value}`} 
+                  className="block w-full rounded-xl bg-slate-55 border border-slate-200 py-3.5 text-center text-sm font-semibold text-slate-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200 active:scale-[0.98]"
+                >
+                  Apply Now
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="w-full border-t border-slate-200/80 bg-white py-12 px-6 lg:px-16 text-slate-500">
+        <div className="mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 mb-8 text-sm">
+          <div className="md:col-span-6 flex flex-col gap-4">
+            <img src="/logo.png" alt="Pinesphere Logo" className="h-10 w-auto object-contain self-start" />
+            <p className="text-xs leading-relaxed text-slate-400 max-w-sm">
+              We offer technology consulting and digital solutions to global enterprises, enabling transformative scale at speed.
+            </p>
+          </div>
+          <div className="md:col-span-3">
+            <h4 className="font-semibold text-slate-800 mb-3 uppercase tracking-wider text-xs">Navigation</h4>
+            <ul className="space-y-2 text-xs">
+              <li><a href="#programs" onClick={handleExploreClick} className="hover:text-blue-600 transition-colors">Available Programs</a></li>
+              <li><Link href="/login" className="hover:text-blue-600 transition-colors">Entrance Portal</Link></li>
+            </ul>
+          </div>
+          <div className="md:col-span-3">
+            <h4 className="font-semibold text-slate-800 mb-3 uppercase tracking-wider text-xs">Legal</h4>
+            <ul className="space-y-2 text-xs">
+              <li><Link href="#" className="hover:text-blue-600 transition-colors">Privacy Policy</Link></li>
+              <li><Link href="#" className="hover:text-blue-600 transition-colors">Terms of Service</Link></li>
+              <li><Link href="#" className="hover:text-blue-600 transition-colors">Contact Support</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="mx-auto max-w-7xl border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold tracking-wider text-slate-400">
+          <div>© 2026 PINESPHERE ENTERPRISE. ALL RIGHTS RESERVED.</div>
+          <div className="flex gap-6">
+            <Link href="#" className="hover:text-blue-600 transition-colors">PRIVACY POLICY</Link>
+            <Link href="#" className="hover:text-blue-600 transition-colors">TERMS</Link>
+            <Link href="#" className="hover:text-blue-600 transition-colors">SUPPORT</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
